@@ -1,0 +1,400 @@
+# ============================================================================
+#  API CONTRACT for the [Finance] module
+# ----------------------------------------------------------------------------
+#  This file is the single source of truth for your module's endpoints.
+#    1. Write or update it BEFORE writing backend code.
+#    2. The frontend and the other modules build against it.
+#    3. Swagger UI (at /docs) must show every endpoint in this file, working.
+#
+#  The "Announcements" endpoints below are an EXAMPLE. Copy the pattern for
+#  your own resources, then delete the example.
+#
+#  Guide:     server/API-CONTRACT.md
+#  Validate:  paste into https://editor.swagger.io
+#             or run:  npx @redocly/cli lint openapi.yaml
+# ============================================================================
+
+openapi: 3.0.3
+
+info:
+  title: "[Finance] API"
+  version: 0.1.0
+  description: |
+    REST API for the **[Finance]** module of the College Management System.
+
+    - All endpoints are under `/api/v1`.
+    - JSON field names use camelCase. Dates use ISO 8601 in UTC.
+    - Every error uses the Problem Details format (see the `ProblemDetails` schema).
+  contact:
+    name: "[Finance Group] - [Michael Angelo De Vergara]"
+
+servers:
+  - url: http://localhost:8004/docs
+    description: Local development (change to your module's port, see docs/integration.md)
+
+# No login in the midterm, so no endpoint requires authentication.
+# For finals, see "Adding login later" in server/API-CONTRACT.md.
+security: []
+
+tags:
+  - name: Health
+    description: Check that the server is running
+  - name: Announcements
+    description: EXAMPLE resource. Replace with your module's resources.
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Check that the API is running
+      operationId: getHealth
+      responses:
+        "200":
+          description: The API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /announcements:
+    get:
+      tags: [Announcements]
+      summary: List announcements
+      description: Returns one page of announcements, newest first. Can be filtered by audience and status.
+      operationId: listAnnouncements
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: audience
+          in: query
+          description: Only return announcements for this audience
+          schema:
+            $ref: "#/components/schemas/Audience"
+        - name: status
+          in: query
+          description: Only return announcements with this status
+          schema:
+            $ref: "#/components/schemas/AnnouncementStatus"
+      responses:
+        "200":
+          description: One page of announcements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnouncementList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+    post:
+      tags: [Announcements]
+      summary: Create an announcement
+      operationId: createAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementCreate"
+      responses:
+        "201":
+          description: The announcement was created
+          headers:
+            Location:
+              description: URL of the new announcement
+              schema:
+                type: string
+                example: /api/v1/announcements/ANN-0003
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /announcements/{announcementId}:
+    parameters:
+      - $ref: "#/components/parameters/AnnouncementId"
+
+    get:
+      tags: [Announcements]
+      summary: Get one announcement
+      operationId: getAnnouncement
+      responses:
+        "200":
+          description: The announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags: [Announcements]
+      summary: Update an announcement
+      description: Send only the fields you want to change. Archived announcements can't be edited.
+      operationId: updateAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementUpdate"
+      responses:
+        "200":
+          description: The updated announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      tags: [Announcements]
+      summary: Delete an announcement
+      operationId: deleteAnnouncement
+      responses:
+        "204":
+          description: Deleted. There is no response body.
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /announcements/{announcementId}/archive:
+    parameters:
+      - $ref: "#/components/parameters/AnnouncementId"
+
+    post:
+      tags: [Announcements]
+      summary: Archive an announcement
+      description: |
+        Example of an **action endpoint**. Use this pattern for things that are not simple
+        create/read/update/delete, such as approve, archive, return a book, or pay a fee.
+      operationId: archiveAnnouncement
+      responses:
+        "200":
+          description: The archived announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  parameters:
+    AnnouncementId:
+      name: announcementId
+      in: path
+      required: true
+      description: The announcement's ID
+      schema:
+        type: string
+        example: ANN-0001
+    Page:
+      name: page
+      in: query
+      description: Page number, starting at 1
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    Audience:
+      type: string
+      description: Who the announcement is for
+      enum: [everyone, students, faculty, staff]
+      example: students
+
+    AnnouncementStatus:
+      type: string
+      enum: [published, archived]
+      example: published
+
+    # What the server SENDS BACK (includes fields the server sets: id, status, dates)
+    Announcement:
+      type: object
+      required: [id, title, body, audience, status, postedBy, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: Generated by the server
+          example: ANN-0001
+        title:
+          type: string
+          maxLength: 150
+          example: Enrollment for the 2nd semester is now open
+        body:
+          type: string
+          example: Online enrollment runs from October 1 to October 15.
+        audience:
+          $ref: "#/components/schemas/Audience"
+        status:
+          $ref: "#/components/schemas/AnnouncementStatus"
+        postedBy:
+          type: string
+          description: Employee ID of the author. Owned by the Faculty module (we only store the ID).
+          example: EMP-0042
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-25T08:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-09-25T08:00:00Z"
+
+    # What the client SENDS to create one (no id, status, or dates; the server sets those)
+    AnnouncementCreate:
+      type: object
+      required: [title, body, audience, postedBy]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: Enrollment for the 2nd semester is now open
+        body:
+          type: string
+          minLength: 1
+          example: Online enrollment runs from October 1 to October 15.
+        audience:
+          $ref: "#/components/schemas/Audience"
+        postedBy:
+          type: string
+          example: EMP-0042
+
+    # What the client SENDS to update one (all fields optional, at least one required)
+    AnnouncementUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: "UPDATED: Enrollment extended"
+        body:
+          type: string
+          minLength: 1
+          example: Online enrollment is extended until October 20.
+        audience:
+          $ref: "#/components/schemas/Audience"
+
+    # Every list endpoint returns { data: [...], meta: {...} }
+    AnnouncementList:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Announcement"
+        meta:
+          $ref: "#/components/schemas/PageMeta"
+
+    PageMeta:
+      type: object
+      required: [page, limit, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          description: Total number of items across all pages
+          example: 42
+
+    ProblemDetails:
+      type: object
+      description: |
+        The error body used by EVERY endpoint (RFC 9457 "Problem Details").
+        Content type: application/problem+json
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          description: A URI that identifies the kind of error. Use "about:blank" if you don't have one.
+          example: about:blank
+        title:
+          type: string
+          description: Short summary of the error
+          example: Bad Request
+        status:
+          type: integer
+          description: Same as the HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: What went wrong in this specific request
+          example: The request body has invalid fields.
+        errors:
+          type: object
+          description: Validation messages for each field (400 errors only)
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            title: [title is required]
+
+  responses:
+    BadRequest:
+      description: The request is invalid (missing fields, wrong types, or bad query parameters)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: The request body has invalid fields.
+            errors:
+              title: [title is required]
+    NotFound:
+      description: No item exists with that ID
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Announcement ANN-9999 was not found.
+    Conflict:
+      description: The request conflicts with the item's current state
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            detail: Announcement ANN-0001 is archived and can't be changed.

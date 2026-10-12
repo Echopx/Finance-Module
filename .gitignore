@@ -1,0 +1,39 @@
+# Environment files: these hold secrets. Commit .env.example instead.
+.env
+.env.*
+!.env.example
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Node.js
+node_modules/
+dist/
+build/
+.next/
+coverage/
+npm-debug.log*
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+
+# Java
+target/
+.gradle/
+
+# PHP
+vendor/
